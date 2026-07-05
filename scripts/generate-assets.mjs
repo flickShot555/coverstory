@@ -48,6 +48,27 @@ const ogSvg = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http
   <text x="600" y="500" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" fill="#b7b7c2">Hyperlocal, believable excuses — on demand.</text>
 </svg>`;
 
+// Store-style install screenshots (brand background + logo + wordmark + tagline).
+function screenshotSvg(w, h, iconSize, iconY, titleSize, titleY, tagSize, tagY) {
+  const scale = iconSize / 512;
+  const iconX = (w - iconSize) / 2;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="g" cx="50%" cy="38%" r="70%">
+        <stop offset="0%" stop-color="#2d1b69"/>
+        <stop offset="100%" stop-color="#0a0a0f"/>
+      </radialGradient>
+    </defs>
+    <rect width="${w}" height="${h}" fill="url(#g)"/>
+    <g transform="translate(${iconX},${iconY}) scale(${scale})">
+      <rect width="512" height="512" rx="115" fill="#7c3aed"/>
+      ${KEYHOLE}
+    </g>
+    <text x="${w / 2}" y="${titleY}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${titleSize}" font-weight="800" fill="#ffffff" letter-spacing="-1.5">Coverstory</text>
+    <text x="${w / 2}" y="${tagY}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${tagSize}" fill="#b7b7c2">Hyperlocal, believable excuses — on demand.</text>
+  </svg>`;
+}
+
 async function main() {
   const iconBuffer = Buffer.from(iconSvg);
 
@@ -72,7 +93,19 @@ async function main() {
     path.join(publicDir, "og-image.png")
   );
 
-  console.log("Generated: icon-512.png, icon-192.png, favicon.ico, logo.svg, og-image.png");
+  // PWA install screenshots
+  const mobile = screenshotSvg(390, 844, 128, 300, 52, 500, 16, 542);
+  await sharp(Buffer.from(mobile)).resize(390, 844).png().toFile(
+    path.join(publicDir, "screenshot-mobile.png")
+  );
+  const desktop = screenshotSvg(1280, 800, 160, 250, 84, 500, 30, 552);
+  await sharp(Buffer.from(desktop)).resize(1280, 800).png().toFile(
+    path.join(publicDir, "screenshot-desktop.png")
+  );
+
+  console.log(
+    "Generated: icon-512.png, icon-192.png, favicon.ico, logo.svg, og-image.png, screenshot-mobile.png, screenshot-desktop.png"
+  );
 }
 
 main().catch((err) => {

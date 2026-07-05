@@ -66,9 +66,8 @@ export async function groqChat(
   }
 
   if (!res.ok) {
-    // Read the body for server logs, but never surface it to the client.
-    const body = await res.text().catch(() => "");
-    console.error(`Groq API error ${res.status}: ${body}`);
+    // Log only the status — never the response body (may echo request content).
+    console.error(`Groq API returned status ${res.status}.`);
     const status = res.status === 429 ? 429 : 502;
     throw new GroqError(`Groq API returned ${res.status}.`, status);
   }
