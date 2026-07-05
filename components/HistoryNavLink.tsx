@@ -13,7 +13,7 @@ export function HistoryNavLink() {
     <Link
       href="/history"
       aria-label="History"
-      className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-surface-hover"
+      className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-surface-hover"
     >
       <History className="h-4 w-4" aria-hidden />
     </Link>

@@ -118,13 +118,13 @@ export default function ProfilePage() {
           <img
             src={profile.photoURL}
             alt=""
-            width={64}
-            height={64}
-            className="h-16 w-16 rounded-full"
+            width={80}
+            height={80}
+            className="h-20 w-20 rounded-full ring-2 ring-accent ring-offset-2 ring-offset-background"
             referrerPolicy="no-referrer"
           />
         ) : (
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/20 text-xl font-semibold text-accent">
+          <span className="flex h-20 w-20 items-center justify-center rounded-full bg-accent/20 text-2xl font-semibold text-accent ring-2 ring-accent ring-offset-2 ring-offset-background">
             {(profile?.name ?? "?").charAt(0).toUpperCase()}
           </span>
         )}
@@ -135,12 +135,12 @@ export default function ProfilePage() {
       </div>
 
       {/* Excuses dodged stat */}
-      <div className="flex items-center justify-between rounded-2xl border border-accent/30 bg-accent/10 p-5">
+      <div className="flex items-center justify-between rounded-2xl border border-accent/30 bg-accent/10 p-6">
         <div>
-          <p className="text-3xl font-extrabold text-accent">
+          <p className="text-5xl font-extrabold leading-none text-accent">
             {profile?.excuseCount ?? 0}
           </p>
-          <p className="text-sm text-muted">
+          <p className="mt-1.5 text-sm text-muted">
             {(profile?.excuseCount ?? 0) === 1
               ? "excuse dodged"
               : "excuses dodged"}

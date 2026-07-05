@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Check, MapPin, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -14,11 +15,11 @@ import { WeatherIcon } from "@/components/WeatherIcon";
 import type { Timestamp } from "firebase/firestore";
 
 const CATEGORY_STYLES: Record<string, string> = {
-  work: "bg-blue-500/15 text-blue-300 border-blue-500/30",
-  social: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  family: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  date: "bg-pink-500/15 text-pink-300 border-pink-500/30",
-  other: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+  work: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  social: "bg-green-500/20 text-green-300 border-green-500/30",
+  family: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+  date: "bg-pink-500/20 text-pink-300 border-pink-500/30",
+  other: "bg-white/10 text-white/60 border-white/20",
 };
 
 function categoryLabel(category: string): string {
@@ -143,14 +144,26 @@ export default function HistoryPage() {
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
-          {excuses.map((e) => (
-            <li
+          {excuses.map((e, i) => (
+            <motion.li
               key={e.id}
-              className={`rounded-2xl border border-border bg-surface p-5 transition-opacity ${
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: Math.min(i * 0.05, 0.4) }}
+              className={`relative rounded-2xl border border-border bg-surface p-5 transition-opacity ${
                 e.used ? "opacity-60" : ""
               }`}
             >
-              <div className="mb-3 flex items-center justify-between gap-3">
+              {e.used && (
+                <span
+                  className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-success/20 text-success"
+                  aria-label="Used"
+                >
+                  <Check className="h-3.5 w-3.5" aria-hidden />
+                </span>
+              )}
+
+              <div className="mb-3 flex items-center justify-between gap-3 pr-8">
                 <span
                   className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
                     CATEGORY_STYLES[e.category] ?? CATEGORY_STYLES.other
@@ -180,7 +193,7 @@ export default function HistoryPage() {
 
               <button
                 onClick={() => toggleUsed(e)}
-                className={`mt-4 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`mt-4 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-medium transition-colors ${
                   e.used
                     ? "border-success/40 bg-success/10 text-success"
                     : "border-border bg-background text-muted hover:text-foreground"
@@ -189,7 +202,7 @@ export default function HistoryPage() {
                 <Check className="h-3.5 w-3.5" aria-hidden />
                 {e.used ? "Used" : "Mark as used"}
               </button>
-            </li>
+            </motion.li>
           ))}
         </ul>
       )}

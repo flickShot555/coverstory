@@ -59,7 +59,7 @@ export function ExcuseResult({
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
-        className="rounded-3xl border border-border bg-surface p-6 shadow-card"
+        className="rounded-3xl border border-border border-l-4 border-l-accent bg-surface p-6 shadow-card"
       >
         <p className="text-xl font-medium leading-relaxed">{excuse}</p>
         <p className="mt-4 border-t border-border pt-3 text-xs text-muted">
