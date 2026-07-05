@@ -11,10 +11,13 @@ const publicDir = path.resolve(
   "../public"
 );
 
-// Keyhole: circle on top + a tapered shaft with a triangular notch at the base.
+// Classic keyhole silhouette as a single white path: a circle (top) joined to
+// a narrower straight-sided rectangle (bottom) with a small inverted-triangle
+// notch cut into the bottom-centre of the rectangle.
+// The major arc draws the top of the circle between the two points where the
+// rectangle's vertical sides (x=214 / x=298) meet the circle.
 const KEYHOLE = `
-  <circle cx="256" cy="216" r="74" fill="#ffffff"/>
-  <path d="M228 272 L284 272 L312 364 L278 364 L256 338 L234 364 L200 364 Z" fill="#ffffff"/>
+  <path fill="#ffffff" d="M298 282 A88 88 0 1 0 214 282 L214 400 L248 400 L256 380 L264 400 L298 400 Z"/>
 `;
 
 // Violet rounded-square app icon with the white keyhole.
