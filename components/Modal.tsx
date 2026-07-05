@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface ModalProps {
   open: boolean;
@@ -8,7 +9,7 @@ interface ModalProps {
   children: React.ReactNode;
 }
 
-/** Minimal centered overlay. Closes on backdrop click or Escape. */
+/** Bottom sheet on mobile, centered dialog on desktop. Escape / backdrop close. */
 export function Modal({ open, onClose, children }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -16,7 +17,6 @@ export function Modal({ open, onClose, children }: ModalProps) {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKey);
-    // Prevent background scroll while open.
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -25,22 +25,31 @@ export function Modal({ open, onClose, children }: ModalProps) {
     };
   }, [open, onClose]);
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      onClick={onClose}
-      role="presentation"
-    >
-      <div
-        className="w-full max-w-md rounded-t-2xl bg-[var(--background)] p-6 shadow-xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
-        {children}
-      </div>
-    </div>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          role="presentation"
+        >
+          <motion.div
+            className="w-full max-w-[520px] rounded-t-3xl border border-border bg-background p-6 shadow-card sm:rounded-3xl"
+            initial={{ y: 40, opacity: 0.6 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

@@ -1,76 +1,64 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { LogIn } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { ProfileCompletionForm } from "./ProfileCompletionForm";
 
 /**
- * Adaptive profile entry point:
- *  - signed out         -> "Sign in with Google" button
- *  - needs completion   -> inline ProfileCompletionForm
- *  - complete           -> avatar + name, navigates to /profile
+ * Nav profile control:
+ *  - signed out -> "Sign in" button (triggers Google popup)
+ *  - signed in  -> avatar + first name, navigates to /profile
+ * Profile completion itself is handled by the home flow, not here.
  */
 export function ProfileButton() {
   const router = useRouter();
   const { user, loading: authLoading, error: authError, signInWithGoogle } =
     useAuth();
-  const { profile, loading: profileLoading, needsCompletion, updateProfile } =
-    useUserProfile();
+  const { profile } = useUserProfile();
 
-  if (authLoading || (user && profileLoading)) {
-    return <span className="text-sm text-black/50 dark:text-white/50">…</span>;
+  if (authLoading) {
+    return <span className="text-sm text-muted">…</span>;
   }
 
   if (!user) {
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col items-end gap-1">
         <button
           onClick={signInWithGoogle}
-          className="flex items-center gap-2 rounded-full border border-black/15 px-4 py-2 text-sm font-medium transition-colors hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+          className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium transition-colors hover:bg-surface-hover"
         >
-          Sign in with Google to create your profile
+          <LogIn className="h-4 w-4" aria-hidden />
+          Sign in
         </button>
-        {authError && (
-          <span className="text-xs text-red-600 dark:text-red-400">
-            {authError}
-          </span>
-        )}
+        {authError && <span className="text-xs text-danger">{authError}</span>}
       </div>
     );
   }
 
-  if (needsCompletion) {
-    return (
-      <ProfileCompletionForm
-        initialDob={profile?.dob}
-        initialCity={profile?.city}
-        onSubmit={updateProfile}
-      />
-    );
-  }
+  const firstName = profile?.name?.split(" ")[0] ?? "Profile";
 
   return (
     <button
       onClick={() => router.push("/profile")}
-      className="flex items-center gap-2 rounded-full border border-black/15 py-1 pl-1 pr-4 transition-colors hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+      className="flex items-center gap-2 rounded-full border border-border bg-surface py-1 pl-1 pr-3 transition-colors hover:bg-surface-hover"
     >
       {profile?.photoURL ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={profile.photoURL}
           alt=""
-          width={32}
-          height={32}
-          className="h-8 w-8 rounded-full"
+          width={28}
+          height={28}
+          className="h-7 w-7 rounded-full"
           referrerPolicy="no-referrer"
         />
       ) : (
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/10 text-xs dark:bg-white/20">
-          {(profile?.name ?? "?").charAt(0).toUpperCase()}
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-xs font-semibold text-accent">
+          {firstName.charAt(0).toUpperCase()}
         </span>
       )}
-      <span className="text-sm font-medium">{profile?.name ?? "Profile"}</span>
+      <span className="text-sm font-medium">{firstName}</span>
     </button>
   );
 }

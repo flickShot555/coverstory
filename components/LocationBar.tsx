@@ -1,30 +1,55 @@
 "use client";
 
-import { conditionEmoji } from "@/lib/weather";
-import type { LocationWeather } from "@/hooks/useLocationWeather";
+import { LoaderCircle, MapPin } from "lucide-react";
+import { WeatherIcon } from "./WeatherIcon";
+import type { Place } from "@/lib/geocoding";
+import type { Weather } from "@/lib/weather";
 
-/** Compact location + weather strip shown at the top of the home content. */
-export function LocationBar({ place, weather, loading, unavailable }: LocationWeather) {
-  if (loading) {
+interface LocationBarProps {
+  place: Place | null;
+  weather: Weather | null;
+  /** Confirming = still resolving location/weather this session. */
+  confirming: boolean;
+  /** Signed-out hint (no profile to store location against yet). */
+  signedOut?: boolean;
+}
+
+/** Compact location + weather strip at the top of the home content. */
+export function LocationBar({ place, weather, confirming, signedOut }: LocationBarProps) {
+  const base =
+    "flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm";
+
+  if (signedOut) {
     return (
-      <p className="text-sm text-black/50 dark:text-white/50">
-        Detecting location…
-      </p>
+      <div className={`${base} text-muted`}>
+        <MapPin className="h-4 w-4" aria-hidden />
+        Sign in to set your location
+      </div>
     );
   }
 
-  if (unavailable || !place || !weather) {
+  if (!place || !weather) {
     return (
-      <p className="text-sm text-black/50 dark:text-white/50">
-        📍 Location unavailable — excuses will be a little less local.
-      </p>
+      <div className={`${base} text-muted`}>
+        <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+        {confirming ? "Confirming your location…" : "Detecting location…"}
+      </div>
     );
   }
 
   return (
-    <p className="text-sm font-medium">
-      📍 {place.city} · {conditionEmoji(weather.condition)} {weather.condition} ·{" "}
-      {Math.round(weather.tempC)}°C
-    </p>
+    <div className={`${base} font-medium`}>
+      <MapPin className="h-4 w-4 text-accent" aria-hidden />
+      <span>{place.city}</span>
+      <span className="text-border">·</span>
+      <WeatherIcon
+        condition={weather.condition}
+        isDay={weather.isDay}
+        className="h-4 w-4 text-muted"
+      />
+      <span className="capitalize">{weather.condition}</span>
+      <span className="text-border">·</span>
+      <span>{Math.round(weather.tempC)}°C</span>
+    </div>
   );
 }

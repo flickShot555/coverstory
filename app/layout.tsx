@@ -32,10 +32,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <header className="sticky top-0 z-40 border-b border-black/10 bg-[var(--background)]/80 backdrop-blur dark:border-white/10">
-            <nav className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
-              <Link href="/" className="text-lg font-bold tracking-tight">
-                Coverstory
+          <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
+            <nav className="mx-auto flex max-w-[520px] items-center justify-between px-5 py-3">
+              <Link
+                href="/"
+                className="text-lg font-extrabold tracking-tight"
+              >
+                Cover<span className="text-accent">story</span>
               </Link>
               <ProfileButton />
             </nav>

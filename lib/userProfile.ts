@@ -13,6 +13,14 @@ import {
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
 
+/** Confirmed GPS location, stored once the user grants location access. */
+export interface ProfileLocation {
+  lat: number;
+  lng: number;
+  city: string;
+  country: string;
+}
+
 export interface UserProfile {
   uid: string;
   name: string | null;
@@ -20,8 +28,10 @@ export interface UserProfile {
   photoURL: string | null;
   /** ISO date string (YYYY-MM-DD); null until the user completes their profile. */
   dob: string | null;
-  /** City name; null until completed (can be prefilled from geolocation). */
+  /** City name mirror of location.city; null until location is confirmed. */
   city: string | null;
+  /** GPS coordinates + place; null until the user confirms their location. */
+  location: ProfileLocation | null;
   createdAt: Timestamp | null;
   lastActiveAt: Timestamp | null;
 }
@@ -40,6 +50,7 @@ export type UserProfileUpdate = Partial<{
   photoURL: string | null;
   dob: string | null;
   city: string | null;
+  location: ProfileLocation | null;
   lastActiveAt: FieldValue;
 }>;
 
@@ -66,6 +77,7 @@ export async function createUserProfile(
     photoURL: data.photoURL,
     dob: null,
     city: null,
+    location: null,
     createdAt: serverTimestamp(),
     lastActiveAt: serverTimestamp(),
   });

@@ -160,8 +160,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [user, refresh]
   );
 
+  // Profile is incomplete until we have both a date of birth and a confirmed
+  // GPS location (location is mandatory to generate hyperlocal excuses).
   const needsCompletion =
-    !!profile && (profile.dob === null || profile.city === null);
+    !!profile && (profile.dob === null || profile.location == null);
 
   const value: AuthContextValue = {
     user,

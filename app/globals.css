@@ -3,21 +3,33 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0f;
+  --surface: #15151e;
+  --surface-hover: #1d1d29;
+  --border: #2a2a37;
+  --foreground: #f5f5f7;
+  --muted: #9a9aa8;
+  --accent: #7c5cff;
+  --accent-hover: #8f74ff;
+  --accent-foreground: #ffffff;
+  --danger: #ff6b6b;
+  --success: #59d499;
+  color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  min-height: 100dvh;
 }
 
 @layer utilities {

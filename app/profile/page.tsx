@@ -1,67 +1,96 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Calendar, Check, LoaderCircle, LogIn, LogOut, MapPin } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { reverseGeocode } from "@/lib/geocoding";
 
 export default function ProfilePage() {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
   const { profile, loading: profileLoading, updateProfile } = useUserProfile();
 
   const [dob, setDob] = useState("");
-  const [city, setCity] = useState("");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync local form state when the profile loads/changes.
+  const { coords, error: geoError, loading: locating, requestLocation } =
+    useGeolocation();
+  const [updatingLocation, setUpdatingLocation] = useState(false);
+
   useEffect(() => {
     setDob(profile?.dob ?? "");
-    setCity(profile?.city ?? "");
-  }, [profile?.dob, profile?.city]);
+  }, [profile?.dob]);
+
+  // When GPS resolves (from "Update location"), reverse-geocode and persist.
+  useEffect(() => {
+    if (!coords) return;
+    let cancelled = false;
+    setUpdatingLocation(true);
+    setError(null);
+    setStatus(null);
+    reverseGeocode(coords.latitude, coords.longitude)
+      .then(async (place) => {
+        if (cancelled) return;
+        await updateProfile({
+          city: place.city,
+          location: {
+            lat: coords.latitude,
+            lng: coords.longitude,
+            city: place.city,
+            country: place.country,
+          },
+        });
+        if (!cancelled) setStatus("Location updated.");
+      })
+      .catch(() => {
+        if (!cancelled) setError("Couldn't update your location. Try again.");
+      })
+      .finally(() => {
+        if (!cancelled) setUpdatingLocation(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [coords, updateProfile]);
 
   if (authLoading || (user && profileLoading)) {
     return (
-      <main className="mx-auto max-w-xl p-8">
-        <p className="text-sm text-black/60 dark:text-white/60">Loading…</p>
+      <main className="mx-auto max-w-[520px] px-5 py-10">
+        <p className="text-sm text-muted">Loading…</p>
       </main>
     );
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex max-w-xl flex-col items-start gap-4 p-8">
+      <main className="mx-auto flex max-w-[520px] flex-col items-start gap-4 px-5 py-10">
         <h1 className="text-2xl font-bold">Profile</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">
-          You&apos;re not signed in.
-        </p>
+        <p className="text-sm text-muted">You&apos;re not signed in.</p>
         <button
           onClick={signInWithGoogle}
-          className="rounded-full border border-black/15 px-4 py-2 text-sm font-medium hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+          className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium hover:bg-surface-hover"
         >
+          <LogIn className="h-4 w-4" aria-hidden />
           Sign in with Google
         </button>
       </main>
     );
   }
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveDob = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setStatus(null);
-
     if (!dob) {
       setError("Please enter your date of birth.");
       return;
     }
-    if (!city.trim()) {
-      setError("Please enter your city.");
-      return;
-    }
-
     setSaving(true);
     try {
-      await updateProfile({ dob, city: city.trim() });
+      await updateProfile({ dob });
       setStatus("Saved.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save changes.");
@@ -70,8 +99,10 @@ export default function ProfilePage() {
     }
   };
 
+  const busyLocation = locating || updatingLocation;
+
   return (
-    <main className="mx-auto flex max-w-xl flex-col gap-8 p-8">
+    <main className="mx-auto flex max-w-[520px] flex-col gap-8 px-5 py-8">
       <div className="flex items-center gap-4">
         {profile?.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -84,60 +115,85 @@ export default function ProfilePage() {
             referrerPolicy="no-referrer"
           />
         ) : (
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-black/10 text-xl dark:bg-white/20">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/20 text-xl font-semibold text-accent">
             {(profile?.name ?? "?").charAt(0).toUpperCase()}
           </span>
         )}
         <div>
           <h1 className="text-2xl font-bold">{profile?.name ?? "Profile"}</h1>
-          <p className="text-sm text-black/60 dark:text-white/60">
-            {profile?.email ?? user.email}
-          </p>
+          <p className="text-sm text-muted">{profile?.email ?? user.email}</p>
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium">Date of birth</span>
+      {/* Location — GPS only, no manual entry */}
+      <section className="flex flex-col gap-2">
+        <span className="flex items-center gap-2 text-sm font-medium">
+          <MapPin className="h-4 w-4 text-muted" aria-hidden />
+          Location
+        </span>
+        <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3">
+          <span className="flex items-center gap-2 text-sm">
+            {profile?.location ? (
+              <>
+                <Check className="h-4 w-4 text-success" aria-hidden />
+                {profile.location.city}, {profile.location.country}
+              </>
+            ) : (
+              <span className="text-muted">Not set</span>
+            )}
+          </span>
+          <button
+            onClick={requestLocation}
+            disabled={busyLocation}
+            className="flex items-center gap-1.5 text-xs font-medium text-accent hover:underline disabled:opacity-50"
+          >
+            {busyLocation ? (
+              <>
+                <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                Updating…
+              </>
+            ) : (
+              "Update location"
+            )}
+          </button>
+        </div>
+        {geoError && <span className="text-xs text-danger">{geoError}</span>}
+      </section>
+
+      {/* Date of birth */}
+      <form onSubmit={handleSaveDob} className="flex flex-col gap-3">
+        <label className="flex flex-col gap-2">
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <Calendar className="h-4 w-4 text-muted" aria-hidden />
+            Date of birth
+          </span>
           <input
             type="date"
             value={dob}
             max={new Date().toISOString().slice(0, 10)}
             onChange={(e) => setDob(e.target.value)}
-            className="rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/20"
+            className="rounded-xl border border-border bg-surface px-4 py-3 outline-none transition-colors focus:border-accent"
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium">City</span>
-          <input
-            type="text"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Your city"
-            className="rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/20"
-          />
-        </label>
-
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        {status && (
-          <p className="text-sm text-green-600 dark:text-green-400">{status}</p>
-        )}
+        {error && <p className="text-sm text-danger">{error}</p>}
+        {status && <p className="text-sm text-success">{status}</p>}
 
         <button
           type="submit"
           disabled={saving}
-          className="w-fit rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="w-fit rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-cta transition-colors hover:bg-accent-hover disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
       </form>
 
-      <div className="border-t border-black/10 pt-6 dark:border-white/10">
+      <div className="border-t border-border pt-6">
         <button
           onClick={signOut}
-          className="rounded-full border border-black/15 px-4 py-2 text-sm font-medium hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+          className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium hover:bg-surface-hover"
         >
+          <LogOut className="h-4 w-4" aria-hidden />
           Sign out
         </button>
       </div>

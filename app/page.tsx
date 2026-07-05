@@ -1,16 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDown, LoaderCircle, Sparkles } from "lucide-react";
 import { auth } from "@/lib/firebase";
-import { useLocationWeather } from "@/hooks/useLocationWeather";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useGeolocation, type Coords } from "@/hooks/useGeolocation";
+import { reverseGeocode, type Place } from "@/lib/geocoding";
+import { getWeather, type Weather } from "@/lib/weather";
 import { generateExcuse, type ExcuseRequest } from "@/lib/excuseClient";
 import type { ExcuseCategory } from "@/lib/excusePrompt";
 import { LocationBar } from "@/components/LocationBar";
 import { ExcuseResult } from "@/components/ExcuseResult";
 import { Modal } from "@/components/Modal";
 import { ProfileCompletionForm } from "@/components/ProfileCompletionForm";
+import { LocationGate } from "@/components/LocationGate";
 
 const CATEGORIES: { value: ExcuseCategory; label: string }[] = [
   { value: "work", label: "Work" },
@@ -38,17 +43,23 @@ function partOfDay(hour: number): string {
   return "night";
 }
 
-export default function Home() {
-  const locationWeather = useLocationWeather();
-  const { place, weather } = locationWeather;
+interface SessionLocation {
+  coords: Coords;
+  place: Place;
+  weather: Weather;
+}
 
+export default function Home() {
   const { user, signInWithGoogle } = useAuth();
   const { profile, loading: profileLoading, needsCompletion, updateProfile } =
     useUserProfile();
+  const geo = useGeolocation();
 
   const [category, setCategory] = useState<ExcuseCategory>("other");
   const [details, setDetails] = useState("");
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const [sessionLoc, setSessionLoc] = useState<SessionLocation | null>(null);
 
   const [phase, setPhase] = useState<"home" | "result">("home");
   const [excuse, setExcuse] = useState<string | null>(null);
@@ -59,20 +70,56 @@ export default function Home() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [pendingGenerate, setPendingGenerate] = useState(false);
 
-  const buildContextLabel = useCallback(
-    (now: Date): string => {
-      const when = `${partOfDay(now.getHours())} on ${DAYS[now.getDay()]}`;
-      if (place && weather) {
-        return `Based on your location in ${place.city}, ${
-          weather.condition
-        } ${Math.round(weather.tempC)}°C, ${when}.`;
+  const profileComplete = !!user && !profileLoading && !needsCompletion;
+  const locationDenied = profileComplete && !sessionLoc && !!geo.error;
+
+  // Reset session location when the user signs out.
+  const requestedRef = useRef(false);
+  useEffect(() => {
+    if (!user) {
+      requestedRef.current = false;
+      setSessionLoc(null);
+    }
+  }, [user]);
+
+  // Re-confirm location once per session for complete profiles (user may have moved).
+  useEffect(() => {
+    if (!profileComplete || sessionLoc || requestedRef.current) return;
+    requestedRef.current = true;
+    geo.requestLocation();
+  }, [profileComplete, sessionLoc, geo]);
+
+  // When GPS resolves, reverse-geocode + fetch weather, then persist to Firestore.
+  useEffect(() => {
+    if (!geo.coords || !user) return;
+    const { latitude, longitude } = geo.coords;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [place, weather] = await Promise.all([
+          reverseGeocode(latitude, longitude),
+          getWeather(latitude, longitude),
+        ]);
+        if (cancelled) return;
+        await updateProfile({
+          city: place.city,
+          location: { lat: latitude, lng: longitude, city: place.city, country: place.country },
+        });
+        if (cancelled) return;
+        setSessionLoc({ coords: geo.coords!, place, weather });
+      } catch {
+        // Leave sessionLoc null; the gate / confirming state handles the UI.
       }
-      return `Based on the ${when}.`;
-    },
-    [place, weather]
-  );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [geo.coords, user, updateProfile]);
 
   const doGenerate = useCallback(async () => {
+    if (!sessionLoc) return;
     setGenerating(true);
     setGenError(null);
 
@@ -83,16 +130,16 @@ export default function Home() {
     const payload: ExcuseRequest = {
       category,
       details: details.trim() || undefined,
-      weather: weather ?? {
-        // Fallback when location/weather is unavailable — keeps the request valid.
-        tempC: 15,
-        condition: "unclear",
-        isDay: now.getHours() >= 7 && now.getHours() < 19,
-        windSpeed: 0,
+      weather: {
+        tempC: sessionLoc.weather.tempC,
+        condition: sessionLoc.weather.condition,
+        isDay: sessionLoc.weather.isDay,
+        windSpeed: sessionLoc.weather.windSpeed,
       },
-      location: place
-        ? { city: place.city, country: place.country }
-        : { city: "your area", country: "" },
+      location: {
+        city: sessionLoc.place.city,
+        country: sessionLoc.place.country,
+      },
       timeContext: {
         hour: now.getHours(),
         dayOfWeek: DAYS[day],
@@ -104,9 +151,13 @@ export default function Home() {
           : undefined,
     };
 
-    const label = buildContextLabel(now);
-    const result = await generateExcuse(payload);
+    const label = `Based on your location in ${sessionLoc.place.city}, ${
+      sessionLoc.weather.condition
+    } ${Math.round(sessionLoc.weather.tempC)}°C, ${partOfDay(
+      now.getHours()
+    )} on ${DAYS[day]}.`;
 
+    const result = await generateExcuse(payload);
     if (result.ok) {
       setExcuse(result.excuse);
       setContextLabel(label);
@@ -115,54 +166,64 @@ export default function Home() {
       setGenError(result.error);
     }
     setGenerating(false);
-  }, [category, details, place, weather, profile, buildContextLabel]);
+  }, [sessionLoc, category, details, profile]);
 
-  // Resume a pending generation once auth + profile prerequisites are met.
+  // Resume a pending generation once all prerequisites are satisfied.
   useEffect(() => {
     if (!pendingGenerate) return;
-    if (!user) return; // waiting for sign-in
-    if (profileLoading) return; // waiting for profile sync
+    if (!user || profileLoading) return;
     if (needsCompletion) {
       setShowProfileModal(true);
       return;
     }
+    if (locationDenied) {
+      setPendingGenerate(false);
+      return;
+    }
+    if (!sessionLoc) return; // still confirming location
     setShowProfileModal(false);
     setPendingGenerate(false);
     void doGenerate();
-  }, [pendingGenerate, user, profileLoading, needsCompletion, doGenerate]);
+  }, [
+    pendingGenerate,
+    user,
+    profileLoading,
+    needsCompletion,
+    locationDenied,
+    sessionLoc,
+    doGenerate,
+  ]);
 
   const handleMainCta = useCallback(async () => {
     if (generating) return;
     setGenError(null);
 
     if (!user) {
-      // Sign in first, then the effect above resumes generation.
       setPendingGenerate(true);
       await signInWithGoogle();
-      // If the popup was dismissed, currentUser stays null — cancel the pending run.
-      if (!auth.currentUser) setPendingGenerate(false);
+      if (!auth.currentUser) setPendingGenerate(false); // popup dismissed
       return;
     }
-
     if (profileLoading) {
       setPendingGenerate(true);
       return;
     }
-
     if (needsCompletion) {
       setPendingGenerate(true);
       setShowProfileModal(true);
       return;
     }
-
+    if (!sessionLoc) {
+      setPendingGenerate(true); // wait for location confirmation
+      return;
+    }
     void doGenerate();
-  }, [generating, user, profileLoading, needsCompletion, signInWithGoogle, doGenerate]);
+  }, [generating, user, profileLoading, needsCompletion, sessionLoc, signInWithGoogle, doGenerate]);
 
   const handleStartOver = () => {
     setPhase("home");
     setExcuse(null);
     setGenError(null);
-    // Keep category + details so the user can tweak and try again.
   };
 
   const closeProfileModal = () => {
@@ -170,82 +231,113 @@ export default function Home() {
     setPendingGenerate(false);
   };
 
+  // Hard gate: signed-in, complete, but location denied this session.
+  if (locationDenied) {
+    return <LocationGate onRetry={() => geo.requestLocation()} retrying={geo.loading} />;
+  }
+
+  const ctaLabel = generating
+    ? "Cooking up your excuse…"
+    : "Get me out of this";
+
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-57px)] max-w-2xl flex-col px-4 py-8">
+    <main className="mx-auto flex min-h-[calc(100dvh-61px)] w-full max-w-[520px] flex-col px-5 py-6">
       {phase === "home" ? (
         <div className="flex flex-1 flex-col gap-8">
-          {/* Section 1 — Location bar */}
-          <LocationBar {...locationWeather} />
+          <LocationBar
+            place={sessionLoc?.place ?? null}
+            weather={sessionLoc?.weather ?? null}
+            confirming={!!user && !sessionLoc}
+            signedOut={!user}
+          />
 
-          {/* Section 2 — Situation context */}
+          <div className="flex flex-col gap-2">
+            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-balance">
+              Need a way out?
+            </h1>
+            <p className="text-muted">
+              Pick your situation and we&apos;ll craft a believable, local excuse.
+            </p>
+          </div>
+
+          {/* Category chips */}
           <section className="flex flex-col gap-4">
-            <div>
-              <h2 className="mb-3 text-sm font-semibold text-black/70 dark:text-white/70">
-                What are you getting out of?
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map((c) => {
-                  const selected = category === c.value;
-                  return (
-                    <button
-                      key={c.value}
-                      onClick={() => setCategory(c.value)}
-                      aria-pressed={selected}
-                      className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                        selected
-                          ? "border-transparent bg-foreground text-background"
-                          : "border-black/15 hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  );
-                })}
-              </div>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+              What are you getting out of?
+            </h2>
+            <div className="flex flex-wrap gap-2.5">
+              {CATEGORIES.map((c) => {
+                const selected = category === c.value;
+                return (
+                  <motion.button
+                    key={c.value}
+                    whileTap={{ scale: 0.94 }}
+                    onClick={() => setCategory(c.value)}
+                    aria-pressed={selected}
+                    className={`rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors ${
+                      selected
+                        ? "border-accent bg-accent text-accent-foreground shadow-cta"
+                        : "border-border bg-surface text-foreground hover:bg-surface-hover"
+                    }`}
+                  >
+                    {c.label}
+                  </motion.button>
+                );
+              })}
             </div>
 
             <div>
-              {!detailsOpen ? (
-                <button
-                  onClick={() => setDetailsOpen(true)}
-                  className="text-sm text-black/60 underline-offset-4 hover:underline dark:text-white/60"
-                >
-                  Add details (optional)
-                </button>
-              ) : (
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="font-medium">Details (optional)</span>
-                  <textarea
-                    value={details}
-                    onChange={(e) => setDetails(e.target.value)}
-                    rows={3}
-                    placeholder="Anything specific about the situation?"
-                    autoFocus
-                    className="resize-none rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/20"
-                  />
-                </label>
-              )}
+              <button
+                onClick={() => setDetailsOpen((v) => !v)}
+                className="flex items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${
+                    detailsOpen ? "rotate-180" : ""
+                  }`}
+                  aria-hidden
+                />
+                Add details (optional)
+              </button>
+              <AnimatePresence initial={false}>
+                {detailsOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <textarea
+                      value={details}
+                      onChange={(e) => setDetails(e.target.value)}
+                      rows={3}
+                      placeholder="Anything specific about the situation?"
+                      className="mt-3 w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none transition-colors focus:border-accent"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </section>
 
-          {/* Section 3 — Main CTA */}
+          {/* Main CTA */}
           <section className="mt-auto flex flex-col gap-3 pt-4">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
               onClick={handleMainCta}
               disabled={generating}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-foreground px-6 py-4 text-lg font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="flex items-center justify-center gap-2.5 rounded-2xl bg-accent px-6 py-5 text-lg font-bold text-accent-foreground shadow-cta transition-colors hover:bg-accent-hover disabled:opacity-70"
             >
               {generating ? (
-                <>
-                  <Spinner />
-                  Cooking up your excuse…
-                </>
+                <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden />
               ) : (
-                "Get me out of this"
+                <Sparkles className="h-5 w-5" aria-hidden />
               )}
-            </button>
+              {ctaLabel}
+            </motion.button>
             {genError && (
-              <p className="rounded-md bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
+              <p className="rounded-xl bg-danger/10 p-3 text-sm text-danger">
                 {genError}
               </p>
             )}
@@ -253,7 +345,7 @@ export default function Home() {
         </div>
       ) : (
         excuse && (
-          <div className="flex flex-1 flex-col justify-center py-4">
+          <div className="flex flex-1 flex-col justify-center py-2">
             <ExcuseResult
               excuse={excuse}
               contextLabel={contextLabel}
@@ -266,23 +358,9 @@ export default function Home() {
         )
       )}
 
-      {/* Profile completion gate before generation */}
       <Modal open={showProfileModal} onClose={closeProfileModal}>
-        <ProfileCompletionForm
-          initialDob={profile?.dob}
-          initialCity={profile?.city ?? place?.city ?? null}
-          onSubmit={updateProfile}
-        />
+        <ProfileCompletionForm initialDob={profile?.dob} onSubmit={updateProfile} />
       </Modal>
     </main>
-  );
-}
-
-function Spinner() {
-  return (
-    <span
-      className="h-4 w-4 animate-spin rounded-full border-2 border-background/40 border-t-background"
-      aria-hidden
-    />
   );
 }
