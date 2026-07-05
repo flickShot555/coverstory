@@ -241,111 +241,117 @@ export default function Home() {
     : "Get me out of this";
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-61px)] w-full max-w-[520px] flex-col px-5 py-6">
+    <main className="mx-auto flex min-h-[calc(100dvh-61px)] w-full max-w-[520px] flex-col justify-center gap-5 px-5 py-8">
       {phase === "home" ? (
-        <div className="flex flex-1 flex-col gap-8">
-          <LocationBar
-            place={sessionLoc?.place ?? null}
-            weather={sessionLoc?.weather ?? null}
-            confirming={!!user && !sessionLoc}
-            signedOut={!user}
-          />
-
-          <div className="flex flex-col gap-2">
-            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-balance">
-              Need a way out?
-            </h1>
-            <p className="text-muted">
-              Pick your situation and we&apos;ll craft a believable, local excuse.
-            </p>
+        <div className="flex flex-col gap-5">
+          <div className="flex justify-center">
+            <LocationBar
+              place={sessionLoc?.place ?? null}
+              weather={sessionLoc?.weather ?? null}
+              confirming={!!user && !sessionLoc}
+              signedOut={!user}
+            />
           </div>
 
-          {/* Category chips */}
-          <section className="flex flex-col gap-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
-              What are you getting out of?
-            </h2>
-            <div className="flex flex-wrap gap-2.5">
-              {CATEGORIES.map((c) => {
-                const selected = category === c.value;
-                return (
-                  <motion.button
-                    key={c.value}
-                    whileTap={{ scale: 0.94 }}
-                    onClick={() => setCategory(c.value)}
-                    aria-pressed={selected}
-                    className={`rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors ${
-                      selected
-                        ? "border-accent bg-accent text-accent-foreground shadow-cta"
-                        : "border-border bg-surface text-foreground hover:bg-surface-hover"
-                    }`}
-                  >
-                    {c.label}
-                  </motion.button>
-                );
-              })}
-            </div>
-
-            <div>
-              <button
-                onClick={() => setDetailsOpen((v) => !v)}
-                className="flex items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
-              >
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${
-                    detailsOpen ? "rotate-180" : ""
-                  }`}
-                  aria-hidden
-                />
-                Add details (optional)
-              </button>
-              <AnimatePresence initial={false}>
-                {detailsOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <textarea
-                      value={details}
-                      onChange={(e) => setDetails(e.target.value)}
-                      rows={3}
-                      placeholder="Anything specific about the situation?"
-                      className="mt-3 w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none transition-colors focus:border-accent"
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </section>
-
-          {/* Main CTA */}
-          <section className="mt-auto flex flex-col gap-3 pt-4">
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              onClick={handleMainCta}
-              disabled={generating}
-              className="flex items-center justify-center gap-2.5 rounded-2xl bg-accent px-6 py-5 text-lg font-bold text-accent-foreground shadow-cta transition-colors hover:bg-accent-hover disabled:opacity-70"
-            >
-              {generating ? (
-                <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden />
-              ) : (
-                <Sparkles className="h-5 w-5" aria-hidden />
-              )}
-              {ctaLabel}
-            </motion.button>
-            {genError && (
-              <p className="rounded-xl bg-danger/10 p-3 text-sm text-danger">
-                {genError}
+          {/* Grouped interaction card */}
+          <div className="flex flex-col gap-7 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-card backdrop-blur-sm sm:p-7">
+            <div className="flex flex-col gap-2.5">
+              <h1 className="text-5xl font-extrabold leading-[1.03] tracking-tight text-balance">
+                Need a <span className="text-accent">way out?</span>
+              </h1>
+              <p className="text-[15px] leading-relaxed text-white/60">
+                Pick your situation and we&apos;ll craft a believable, local excuse.
               </p>
-            )}
-          </section>
+            </div>
+
+            {/* Category chips */}
+            <section className="flex flex-col gap-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-white/40">
+                What are you getting out of?
+              </h2>
+              <div className="flex flex-wrap gap-2.5">
+                {CATEGORIES.map((c) => {
+                  const selected = category === c.value;
+                  return (
+                    <motion.button
+                      key={c.value}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCategory(c.value)}
+                      aria-pressed={selected}
+                      className={`rounded-full border px-5 py-3 text-sm font-semibold transition-all ${
+                        selected
+                          ? "border-accent bg-accent text-white shadow-[0_0_12px_rgba(139,92,246,0.4)]"
+                          : "border-white/20 bg-white/5 text-white hover:bg-white/10"
+                      }`}
+                    >
+                      {c.label}
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              <div>
+                <button
+                  onClick={() => setDetailsOpen((v) => !v)}
+                  className="flex items-center gap-1.5 text-sm font-medium text-white/60 transition-colors hover:text-white"
+                >
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${
+                      detailsOpen ? "rotate-180" : ""
+                    }`}
+                    aria-hidden
+                  />
+                  Add details (optional)
+                </button>
+                <AnimatePresence initial={false}>
+                  {detailsOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <textarea
+                        value={details}
+                        onChange={(e) => setDetails(e.target.value)}
+                        rows={3}
+                        placeholder="Anything specific about the situation?"
+                        className="mt-3 w-full resize-none rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/40 focus:border-accent focus:ring-2 focus:ring-accent/30"
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </section>
+
+            {/* Main CTA */}
+            <div className="flex flex-col gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleMainCta}
+                disabled={generating}
+                className="flex items-center justify-center gap-2.5 rounded-2xl bg-accent px-6 py-5 text-lg font-bold text-white shadow-[0_0_30px_rgba(139,92,246,0.5)] transition-shadow hover:shadow-[0_0_45px_rgba(139,92,246,0.7)] disabled:opacity-70"
+              >
+                {generating ? (
+                  <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden />
+                ) : (
+                  <Sparkles className="h-5 w-5" aria-hidden />
+                )}
+                {ctaLabel}
+              </motion.button>
+              {genError && (
+                <p className="rounded-xl bg-danger/10 p-3 text-sm text-danger">
+                  {genError}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         excuse && (
-          <div className="flex flex-1 flex-col justify-center py-2">
+          <div className="py-2">
             <ExcuseResult
               excuse={excuse}
               contextLabel={contextLabel}

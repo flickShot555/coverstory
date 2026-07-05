@@ -27,9 +27,25 @@ html {
 
 body {
   color: var(--foreground);
-  background: var(--background);
+  /* Deep violet glow behind the CTA area, fading to near-black at the edges. */
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 80%, #2d1b69 0%, rgba(45, 27, 105, 0) 60%),
+    #0a0a0f;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   min-height: 100dvh;
+}
+
+/* Very subtle grain overlay for depth — sits above the gradient, below content. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 @layer utilities {
