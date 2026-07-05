@@ -10,6 +10,7 @@ import { useGeolocation, type Coords } from "@/hooks/useGeolocation";
 import { reverseGeocode, type Place } from "@/lib/geocoding";
 import { getWeather, type Weather } from "@/lib/weather";
 import { generateExcuse, type ExcuseRequest } from "@/lib/excuseClient";
+import { saveExcuse } from "@/lib/excuseHistory";
 import type { ExcuseCategory } from "@/lib/excusePrompt";
 import { LocationBar } from "@/components/LocationBar";
 import { ExcuseResult } from "@/components/ExcuseResult";
@@ -51,8 +52,13 @@ interface SessionLocation {
 
 export default function Home() {
   const { user, signInWithGoogle } = useAuth();
-  const { profile, loading: profileLoading, needsCompletion, updateProfile } =
-    useUserProfile();
+  const {
+    profile,
+    loading: profileLoading,
+    needsCompletion,
+    updateProfile,
+    refresh,
+  } = useUserProfile();
   const geo = useGeolocation();
 
   const [category, setCategory] = useState<ExcuseCategory>("other");
@@ -66,6 +72,7 @@ export default function Home() {
   const [contextLabel, setContextLabel] = useState("");
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [pendingGenerate, setPendingGenerate] = useState(false);
@@ -122,6 +129,7 @@ export default function Home() {
     if (!sessionLoc) return;
     setGenerating(true);
     setGenError(null);
+    setSaved(false);
 
     const now = new Date();
     const day = now.getDay();
@@ -162,11 +170,36 @@ export default function Home() {
       setExcuse(result.excuse);
       setContextLabel(label);
       setPhase("result");
+
+      // Fire-and-forget: save to history + bump the counter without blocking UI.
+      if (user) {
+        saveExcuse(user.uid, {
+          excuse: result.excuse,
+          category,
+          details: details.trim() || undefined,
+          location: payload.location,
+          weather: {
+            tempC: payload.weather.tempC,
+            condition: payload.weather.condition,
+          },
+          timeContext: {
+            hour: payload.timeContext.hour,
+            dayOfWeek: payload.timeContext.dayOfWeek,
+          },
+        })
+          .then(() => {
+            setSaved(true);
+            void refresh();
+          })
+          .catch(() => {
+            // Non-fatal: the excuse is already shown; history save is best-effort.
+          });
+      }
     } else {
       setGenError(result.error);
     }
     setGenerating(false);
-  }, [sessionLoc, category, details, profile]);
+  }, [sessionLoc, category, details, profile, user, refresh]);
 
   // Resume a pending generation once all prerequisites are satisfied.
   useEffect(() => {
@@ -224,6 +257,7 @@ export default function Home() {
     setPhase("home");
     setExcuse(null);
     setGenError(null);
+    setSaved(false);
   };
 
   const closeProfileModal = () => {
@@ -262,6 +296,12 @@ export default function Home() {
               <p className="text-[15px] leading-relaxed text-white/60">
                 Pick your situation and we&apos;ll craft a believable, local excuse.
               </p>
+              {user && (profile?.excuseCount ?? 0) > 0 && (
+                <p className="text-sm font-semibold text-accent">
+                  You&apos;ve dodged {profile!.excuseCount} plan
+                  {profile!.excuseCount === 1 ? "" : "s"} so far
+                </p>
+              )}
             </div>
 
             {/* Category chips */}
@@ -357,6 +397,7 @@ export default function Home() {
               contextLabel={contextLabel}
               generating={generating}
               error={genError}
+              saved={saved}
               onRegenerate={doGenerate}
               onStartOver={handleStartOver}
             />

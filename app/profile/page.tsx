@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Check, LoaderCircle, LogIn, LogOut, MapPin } from "lucide-react";
+import Link from "next/link";
+import {
+  Calendar,
+  Check,
+  History,
+  LoaderCircle,
+  LogIn,
+  LogOut,
+  MapPin,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -123,6 +132,27 @@ export default function ProfilePage() {
           <h1 className="text-2xl font-bold">{profile?.name ?? "Profile"}</h1>
           <p className="text-sm text-muted">{profile?.email ?? user.email}</p>
         </div>
+      </div>
+
+      {/* Excuses dodged stat */}
+      <div className="flex items-center justify-between rounded-2xl border border-accent/30 bg-accent/10 p-5">
+        <div>
+          <p className="text-3xl font-extrabold text-accent">
+            {profile?.excuseCount ?? 0}
+          </p>
+          <p className="text-sm text-muted">
+            {(profile?.excuseCount ?? 0) === 1
+              ? "excuse dodged"
+              : "excuses dodged"}
+          </p>
+        </div>
+        <Link
+          href="/history"
+          className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium transition-colors hover:bg-surface-hover"
+        >
+          <History className="h-4 w-4" aria-hidden />
+          View history
+        </Link>
       </div>
 
       {/* Location — GPS only, no manual entry */}

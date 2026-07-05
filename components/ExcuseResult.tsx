@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Check, Copy, RefreshCw, RotateCcw, Share2 } from "lucide-react";
 
 interface ExcuseResultProps {
@@ -9,6 +9,7 @@ interface ExcuseResultProps {
   contextLabel: string;
   generating: boolean;
   error: string | null;
+  saved: boolean;
   onRegenerate: () => void;
   onStartOver: () => void;
 }
@@ -18,6 +19,7 @@ export function ExcuseResult({
   contextLabel,
   generating,
   error,
+  saved,
   onRegenerate,
   onStartOver,
 }: ExcuseResultProps) {
@@ -64,6 +66,20 @@ export function ExcuseResult({
           {contextLabel}
         </p>
       </motion.div>
+
+      <AnimatePresence>
+        {saved && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex items-center gap-1.5 text-xs text-muted"
+          >
+            <Check className="h-3.5 w-3.5 text-success" aria-hidden />
+            Saved to your history
+          </motion.p>
+        )}
+      </AnimatePresence>
 
       {error && (
         <p className="rounded-xl bg-danger/10 p-3 text-sm text-danger">{error}</p>

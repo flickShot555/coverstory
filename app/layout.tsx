@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ProfileButton } from "@/components/ProfileButton";
+import { HistoryNavLink } from "@/components/HistoryNavLink";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -40,7 +41,10 @@ export default function RootLayout({
               >
                 Cover<span className="text-accent">story</span>
               </Link>
-              <ProfileButton />
+              <div className="flex items-center gap-2">
+                <HistoryNavLink />
+                <ProfileButton />
+              </div>
             </nav>
           </header>
           {children}

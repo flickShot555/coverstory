@@ -32,6 +32,8 @@ export interface UserProfile {
   city: string | null;
   /** GPS coordinates + place; null until the user confirms their location. */
   location: ProfileLocation | null;
+  /** Number of excuses generated (dodged plans). Incremented on each save. */
+  excuseCount: number;
   createdAt: Timestamp | null;
   lastActiveAt: Timestamp | null;
 }
@@ -78,6 +80,7 @@ export async function createUserProfile(
     dob: null,
     city: null,
     location: null,
+    excuseCount: 0,
     createdAt: serverTimestamp(),
     lastActiveAt: serverTimestamp(),
   });
