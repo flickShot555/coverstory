@@ -52,6 +52,32 @@ export function describeWeatherCode(code: number): WeatherCondition {
   return "unknown";
 }
 
+/** A small emoji for a condition label, for compact UI display. */
+export function conditionEmoji(condition: string): string {
+  switch (condition) {
+    case "clear":
+      return "☀️";
+    case "partly cloudy":
+      return "⛅";
+    case "cloudy":
+      return "☁️";
+    case "fog":
+      return "🌫️";
+    case "drizzle":
+      return "🌦️";
+    case "rain":
+      return "🌧️";
+    case "showers":
+      return "🌦️";
+    case "snow":
+      return "❄️";
+    case "thunderstorm":
+      return "⛈️";
+    default:
+      return "🌡️";
+  }
+}
+
 /** Fetch current weather conditions for a latitude/longitude. */
 export async function getWeather(
   latitude: number,
