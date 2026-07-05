@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, LoaderCircle, Sparkles } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { getFirebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useGeolocation, type Coords } from "@/hooks/useGeolocation";
@@ -234,7 +234,7 @@ export default function Home() {
     if (!user) {
       setPendingGenerate(true);
       await signInWithGoogle();
-      if (!auth.currentUser) setPendingGenerate(false); // popup dismissed
+      if (!getFirebaseAuth().currentUser) setPendingGenerate(false); // popup dismissed
       return;
     }
     if (profileLoading) {

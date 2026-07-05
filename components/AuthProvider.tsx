@@ -14,7 +14,7 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { getFirebaseAuth } from "@/lib/firebase";
 import {
   syncProfileOnSignIn,
   updateUserProfile,
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Single auth-state subscription for the whole app.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (nextUser) => {
       setUser(nextUser);
       setAuthLoading(false);
     });
@@ -123,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthError(null);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      await signInWithPopup(getFirebaseAuth(), provider);
     } catch (err) {
       const message = messageForAuthError(err);
       if (message) setAuthError(message);
@@ -133,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     setAuthError(null);
     try {
-      await firebaseSignOut(auth);
+      await firebaseSignOut(getFirebaseAuth());
     } catch {
       setAuthError("Sign-out failed. Please try again.");
     }

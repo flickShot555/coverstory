@@ -22,7 +22,19 @@ export const firebaseConfig = {
 // Reuse the existing app across hot reloads / multiple imports.
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export const auth: Auth = getAuth(app);
+// initializeApp / getFirestore don't validate the apiKey, so they're safe to
+// run during server prerendering (they never touch the network at build time).
 export const db: Firestore = getFirestore(app);
+
+// getAuth(), however, eagerly rejects a missing/empty apiKey with
+// auth/invalid-api-key. During `next build` the client components below are
+// prerendered on the server, so an eager getAuth() would crash the build when
+// the env is absent. Initialize Auth lazily instead — it only ever runs in the
+// browser, where the app's effects actually use it.
+let authInstance: Auth | undefined;
+export function getFirebaseAuth(): Auth {
+  if (!authInstance) authInstance = getAuth(app);
+  return authInstance;
+}
 
 export { app };
