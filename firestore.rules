@@ -36,7 +36,7 @@ service cloud.firestore {
     // (Firebase Console → Authentication → Users → copy the User UID).
     match /admin/{document=**} {
       allow read, write: if request.auth != null
-        && request.auth.uid == "YOUR_ADMIN_UID";
+        && request.auth.uid == "zgFkOjon7hQYU8Arzjx0ihMM0Fm1";
     }
   }
 }
